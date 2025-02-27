@@ -24,6 +24,7 @@ export const useAnthropicChat = (apiKey) => {
           system:
             "You are an AI assistant that analyzes query complexity and returns ONLY a number from 0-100.",
           messages: [
+            // [ ] todo: incorporate the entire conversation context.
             {
               role: "user",
               content: `Please analyze the following user query and rate its complexity on a scale from 0-100, where 0 means a simple, straightforward question requiring minimal reasoning, and 100 means an extremely complex problem requiring intensive step-by-step analysis. Provide ONLY a number between 0-100 with no explanation.\n\nUser query: "${query}"`,

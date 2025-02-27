@@ -26,23 +26,7 @@ const MessageBubble = ({ message }) => {
   return (
     <div className={`message-bubble ${isAssistant ? "assistant" : "user"}`}>
       <div className="message-header">
-        <div className="message-sender">
-          {isAssistant ? "Claude" : "You"}
-
-          {/* Complexity badge */}
-          {showComplexity && (
-            <span
-              className="complexity-badge ml-2 text-xs px-2 py-0.5 rounded-full"
-              style={{
-                backgroundColor: `${complexityColor}20`,
-                color: complexityColor,
-                border: `1px solid ${complexityColor}`,
-              }}
-            >
-              {complexityLabel} ({complexityScore})
-            </span>
-          )}
-        </div>
+        <div className="message-sender">{isAssistant ? "Claude" : "You"}</div>
 
         {isAssistant && message.thinking && (
           <button
@@ -53,6 +37,34 @@ const MessageBubble = ({ message }) => {
           </button>
         )}
       </div>
+
+      {/* Complexity section - moved to be full width */}
+      {showComplexity && (
+        <div
+          className="complexity-section"
+          style={{ marginTop: "4px", marginBottom: "8px" }}
+        >
+          <div
+            className="complexity-bar bg-gray-200 rounded-full overflow-hidden relative"
+            style={{
+              height: "8px",
+              backgroundColor: "#d1f1f1",
+              width: "100%",
+              cursor: "help",
+            }}
+            title={`Complexity ${complexityScore}: ${complexityLabel}`}
+          >
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${complexityScore}%`,
+                backgroundColor: complexityColor,
+                height: "100%",
+              }}
+            ></div>
+          </div>
+        </div>
+      )}
 
       {/* Rest of component remains the same */}
       {isAssistant && showThinking && message.thinking && (

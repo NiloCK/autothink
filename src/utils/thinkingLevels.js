@@ -23,7 +23,7 @@ export const calculateThinkingBudget = (complexityScore) => {
  * @returns {string} - Human-readable description
  */
 export const getComplexityLabel = (score) => {
-  if (score < 10) return "Very Simple";
+  if (score < 10) return "Very Simple - Direct Answer";
   if (score < 30) return "Simple";
   if (score < 50) return "Moderate";
   if (score < 70) return "Complex";
