@@ -175,7 +175,7 @@ body {
 
 .thinking-toggle {
     background-color: transparent;
-    color: var(--primary-color);
+    color: #f0e7ff;
     border: none;
     font-size: 0.75rem;
     cursor: pointer;

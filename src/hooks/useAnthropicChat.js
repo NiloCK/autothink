@@ -6,6 +6,7 @@ export const useAnthropicChat = (apiKey) => {
   const [isLoading, setIsLoading] = useState(false);
   const [complexityScore, setComplexityScore] = useState(null);
   const [thinkingBudget, setThinkingBudget] = useState(0);
+  const [streamingThinking, setStreamingThinking] = useState("");
 
   const analyzeComplexity = useCallback(
     async (query) => {
@@ -55,6 +56,7 @@ export const useAnthropicChat = (apiKey) => {
 
       try {
         setIsLoading(true);
+        setStreamingThinking(""); // Reset streaming thinking for new message
 
         // Add user message to chat
         const newMessages = [
@@ -71,13 +73,25 @@ export const useAnthropicChat = (apiKey) => {
         const budget = calculateThinkingBudget(score);
         setThinkingBudget(budget);
 
-        // Phase 2: Get response with appropriate thinking budget
+        // Phase 2: Get response with appropriate thinking budget (using streaming)
         const anthropic = new Anthropic({
           apiKey,
           dangerouslyAllowBrowser: true,
         });
 
-        const response = await anthropic.messages.create({
+        // Create a placeholder for the assistant response
+        const tempAssistantMessage = {
+          role: "assistant",
+          content: "",
+          thinking: "",
+          complexityScore: score,
+          isStreaming: true,
+        };
+
+        setMessages([...newMessages, tempAssistantMessage]);
+
+        // Initialize stream response
+        const stream = anthropic.messages.stream({
           model: "claude-3-7-sonnet-20250219",
           max_tokens: budget + 4000,
           system: "You are Claude, a helpful AI assistant.",
@@ -96,21 +110,76 @@ export const useAnthropicChat = (apiKey) => {
                 },
         });
 
-        // Add response to messages
-        setMessages([
-          ...newMessages,
-          {
-            role: "assistant",
-            content:
-              response.content.find((c) => c.type === "text")?.text || "",
-            thinking:
-              response.content.find((c) => c.type === "thinking")?.thinking ||
-              null,
-            complexityScore: score,
-          },
-        ]);
+        let accumulatedContent = "";
+        let accumulatedThinking = "";
+
+        // Process the stream as it arrives
+        for await (const chunk of stream) {
+          // Process content blocks as they arrive
+          if (chunk.type === "content_block_delta") {
+            if (chunk.delta.type === "thinking_delta") {
+              accumulatedThinking += chunk.delta.thinking;
+
+              // Update the message with the latest thinking content
+              setMessages((prevMessages) => {
+                const updatedMessages = [...prevMessages];
+                const lastMessageIndex = updatedMessages.length - 1;
+                updatedMessages[lastMessageIndex] = {
+                  ...updatedMessages[lastMessageIndex],
+                  thinking: accumulatedThinking,
+                };
+                return updatedMessages;
+              });
+
+              setStreamingThinking(accumulatedThinking);
+            } else if (chunk.delta.type === "text_delta") {
+              accumulatedContent += chunk.delta.text;
+
+              // Update the message with the latest content
+              setMessages((prevMessages) => {
+                const updatedMessages = [...prevMessages];
+                const lastMessageIndex = updatedMessages.length - 1;
+                updatedMessages[lastMessageIndex] = {
+                  ...updatedMessages[lastMessageIndex],
+                  content: accumulatedContent,
+                };
+                return updatedMessages;
+              });
+            }
+          }
+
+          // When message is complete, update the isStreaming status
+          if (chunk.type === "message_stop") {
+            setMessages((prevMessages) => {
+              const updatedMessages = [...prevMessages];
+              const lastMessageIndex = updatedMessages.length - 1;
+              updatedMessages[lastMessageIndex] = {
+                ...updatedMessages[lastMessageIndex],
+                isStreaming: false,
+              };
+              return updatedMessages;
+            });
+          }
+        }
+
+        // The final message is already updated through the streaming process
       } catch (error) {
         console.error("Error sending message:", error);
+
+        // Update the last message to show the error state
+        setMessages((prevMessages) => {
+          const updatedMessages = [...prevMessages];
+          const lastMessageIndex = updatedMessages.length - 1;
+          if (updatedMessages[lastMessageIndex]?.role === "assistant") {
+            updatedMessages[lastMessageIndex] = {
+              ...updatedMessages[lastMessageIndex],
+              isStreaming: false,
+              error: true,
+              errorMessage: error.message || "Failed to get response",
+            };
+          }
+          return updatedMessages;
+        });
       } finally {
         setIsLoading(false);
       }
@@ -124,6 +193,7 @@ export const useAnthropicChat = (apiKey) => {
     isLoading,
     complexityScore,
     thinkingBudget,
+    streamingThinking,
   };
 };
 
